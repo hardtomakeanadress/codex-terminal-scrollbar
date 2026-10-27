@@ -12,6 +12,9 @@ examples = [
     '[tui]\nfullscreen_transcript = true\n\n[profiles.work]\nname = "keep me"\n',
     'model = "example"\n',
     '[tui] # comment\nnotice = true',
+    '[tui]\nfullscreen_transcript = false\n',
+    '[tui]\nfullscreen_transcript = false\nalternate_screen = "always"\n[tui.other]\nalternate_screen = "keep me"\n',
+    '[tui]\nfullscreen_transcript = true\nalternate_screen = "never"\n',
     '',
 ]
 with tempfile.TemporaryDirectory() as directory:
@@ -24,10 +27,14 @@ with tempfile.TemporaryDirectory() as directory:
         assert backup.read_text() == original
         after = tomllib.loads(path.read_text())
         assert after['tui'].pop('fullscreen_transcript') is False
+        assert after['tui'].pop('alternate_screen') == 'never'
         before.setdefault('tui', {}).pop('fullscreen_transcript', None)
+        before['tui'].pop('alternate_screen', None)
         assert after == before
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
         assert configure(path) is None
         configure(path, fullscreen=True)
         assert tomllib.loads(path.read_text())['tui']['fullscreen_transcript'] is True
+        assert tomllib.loads(path.read_text())['tui']['alternate_screen'] == 'auto'
+        assert configure(path, fullscreen=True) is None
 print('PASS: unrelated TOML settings, nested sections, backups, file permissions, repeated setup, undo')

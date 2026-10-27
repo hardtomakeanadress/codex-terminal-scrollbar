@@ -15,21 +15,31 @@ import tomllib
 def render_preference(text, fullscreen):
     before = tomllib.loads(text)
     expected = copy.deepcopy(before)
-    expected.setdefault("tui", {})["fullscreen_transcript"] = fullscreen
-    value = "true" if fullscreen else "false"
+    preferences = {
+        "fullscreen_transcript": fullscreen,
+        "alternate_screen": "auto" if fullscreen else "never",
+    }
+    expected.setdefault("tui", {}).update(preferences)
+    assignments = {
+        "fullscreen_transcript": "true" if fullscreen else "false",
+        "alternate_screen": '"auto"' if fullscreen else '"never"',
+    }
     section = re.search(r"(?m)^\[tui\][ \t]*(?:#.*)?$", text)
     if section:
         next_section = re.search(r"(?m)^\s*\[", text[section.end():])
         end = section.end() + next_section.start() if next_section else len(text)
         body = text[section.end():end]
-        assignment = re.compile(r"(?m)^[ \t]*fullscreen_transcript[ \t]*=.*$")
-        if assignment.search(body):
-            body = assignment.sub(f"fullscreen_transcript = {value}", body, count=1)
-        else:
-            body = f"\nfullscreen_transcript = {value}" + body
+        for key, value in assignments.items():
+            assignment = re.compile(rf"(?m)^[ \t]*{key}[ \t]*=.*$")
+            if assignment.search(body):
+                body = assignment.sub(f"{key} = {value}", body, count=1)
+            else:
+                body = f"\n{key} = {value}" + body
         result = text[:section.end()] + body + text[end:]
     else:
-        result = text.rstrip() + f"\n\n[tui]\nfullscreen_transcript = {value}\n"
+        result = text.rstrip() + "\n\n[tui]\n" + "".join(
+            f"{key} = {value}\n" for key, value in assignments.items()
+        )
     if tomllib.loads(result) != expected:
         raise ValueError("Configuration structure was unexpected; no changes were written.")
     return result
@@ -37,9 +47,9 @@ def render_preference(text, fullscreen):
 
 def configure(path, fullscreen=False):
     original = path.read_text() if path.exists() else ""
-    if tomllib.loads(original).get("tui", {}).get("fullscreen_transcript") is fullscreen:
-        return None
     updated = render_preference(original, fullscreen)
+    if tomllib.loads(updated) == tomllib.loads(original):
+        return None
     path.parent.mkdir(parents=True, exist_ok=True)
     backup = None
     mode = 0o600
@@ -74,6 +84,7 @@ def main():
     if not args.apply and not args.fullscreen:
         data = tomllib.loads(args.config.read_text()) if args.config.exists() else {}
         print("Saved fullscreen preference:", data.get("tui", {}).get("fullscreen_transcript", "not set"))
+        print("Saved alternate screen preference:", data.get("tui", {}).get("alternate_screen", "not set"))
         print("Run with --apply to use the terminal's real scrollbar. No changes made.")
         return
     backup = configure(args.config, fullscreen=args.fullscreen)

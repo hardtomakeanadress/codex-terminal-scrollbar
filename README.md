@@ -15,7 +15,11 @@ The helper backs up `~/.codex/config.toml`, preserves the other settings, and se
 ```toml
 [tui]
 fullscreen_transcript = false
+alternate_screen = "never"
 ```
+
+Both settings are needed: disabling fullscreen transcript ownership alone leaves
+the default alternate screen enabled in GNOME Terminal, preventing native scrollback.
 
 Then exit the interactive Codex CLI with `/quit` and resume your task:
 
@@ -25,7 +29,8 @@ codex resume --last
 
 If another task has become the most recent, use `codex resume` and select the correct task instead. A running voice conversation ends when the CLI exits; start `/voice` again after resuming. The helper itself does not stop your CLI or voice session.
 
-You can instead choose Scrollback from Codex's built-in `/tui` menu, then restart. For a single launch without changing preferences:
+Codex's `/tui` menu saves the transcript preference only; it does not disable the
+alternate screen. For a single launch without changing preferences:
 
 ```sh
 codex --no-alt-screen resume --last
@@ -43,7 +48,9 @@ The scrollbar is at the terminal's right edge. Drag its thumb to move through th
 python3 configure.py --fullscreen
 ```
 
-Restart Codex again. Original configuration backups stay next to the config file and may contain private settings; do not publish them.
+This sets `fullscreen_transcript = true` and returns `alternate_screen` to its
+default `"auto"` policy. Restart Codex again. Original configuration backups stay
+next to the config file and may contain private settings; do not publish them.
 
 ## Scope and verification
 
